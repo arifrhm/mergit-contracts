@@ -25,15 +25,18 @@ contract IdentityTest is Test {
     }
 
     function test_agentIdsIncrease() public {
+        address op2 = makeAddr("operator2");
         vm.prank(operator);
         uint256 first = id.registerAgent(runtime, "ipfs://agent-1");
 
         address runtime2 = makeAddr("runtime2");
-        vm.prank(operator);
+        vm.prank(op2);
         uint256 second = id.registerAgent(runtime2, "ipfs://agent-2");
 
         assertEq(first, 1);
         assertEq(second, 2);
+        assertEq(id.ownerOf(first), operator);
+        assertEq(id.ownerOf(second), op2);
     }
 
     function test_registerAgentEmitsEvent() public {
@@ -57,9 +60,18 @@ contract IdentityTest is Test {
         id.setRuntimeKey(agentId, stranger);
 
         address next = makeAddr("next");
+        vm.expectEmit(true, false, false, true);
+        emit IIdentity.RuntimeKeyChanged(agentId, next);
         vm.prank(operator);
         id.setRuntimeKey(agentId, next);
         assertEq(id.runtimeKeyOf(agentId), next);
+    }
+
+    function test_setRuntimeKeyRejectsUnknownAgent() public {
+        address next = makeAddr("next");
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(IIdentity.UnknownAgent.selector, 42));
+        id.setRuntimeKey(42, next);
     }
 
     function test_setRuntimeKeyRejectsZeroAddress() public {
@@ -78,6 +90,7 @@ contract IdentityTest is Test {
         vm.prank(operator);
         id.transferFrom(operator, buyer, agentId);
         assertEq(id.operatorOf(agentId), buyer);
+        assertEq(id.runtimeKeyOf(agentId), runtime);
     }
 
     function test_unknownAgentReverts() public {
