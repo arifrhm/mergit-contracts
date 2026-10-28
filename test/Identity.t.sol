@@ -24,6 +24,18 @@ contract IdentityTest is Test {
         assertEq(id.tokenURI(agentId), "ipfs://agent-1");
     }
 
+    function test_agentIdsIncrease() public {
+        vm.prank(operator);
+        uint256 first = id.registerAgent(runtime, "ipfs://agent-1");
+
+        address runtime2 = makeAddr("runtime2");
+        vm.prank(operator);
+        uint256 second = id.registerAgent(runtime2, "ipfs://agent-2");
+
+        assertEq(first, 1);
+        assertEq(second, 2);
+    }
+
     function test_registerAgentEmitsEvent() public {
         vm.expectEmit(true, true, false, true);
         emit IIdentity.AgentRegistered(1, operator, runtime, "ipfs://a");
@@ -50,6 +62,15 @@ contract IdentityTest is Test {
         assertEq(id.runtimeKeyOf(agentId), next);
     }
 
+    function test_setRuntimeKeyRejectsZeroAddress() public {
+        vm.prank(operator);
+        uint256 agentId = id.registerAgent(runtime, "");
+
+        vm.prank(operator);
+        vm.expectRevert(IIdentity.ZeroRuntimeKey.selector);
+        id.setRuntimeKey(agentId, address(0));
+    }
+
     function test_runtimeKeyFollowsTokenTransferOwnership() public {
         vm.prank(operator);
         uint256 agentId = id.registerAgent(runtime, "");
@@ -62,5 +83,10 @@ contract IdentityTest is Test {
     function test_unknownAgentReverts() public {
         vm.expectRevert(abi.encodeWithSelector(IIdentity.UnknownAgent.selector, 42));
         id.runtimeKeyOf(42);
+    }
+
+    function test_tokenURIOfUnknownAgentReverts() public {
+        vm.expectRevert(abi.encodeWithSelector(IIdentity.UnknownAgent.selector, 42));
+        id.tokenURI(42);
     }
 }
